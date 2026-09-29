@@ -2,6 +2,7 @@ import argparse
 import json, string, pickle, os, math
 from nltk.stem import PorterStemmer
 from collections import Counter
+from constants import BM25_K1
 
 stemmer = PorterStemmer()
 
@@ -78,20 +79,22 @@ def load_movies(path:str) -> dict:
         movie_dict = json.load(f)
     return movie_dict
 
-def get_score(score_type: str, term: str, doc_id: int = None) -> float:
+def get_score(score_type: str, term: str, doc_id: int = None, k1 = BM25_K1) -> float:
     token = tokenise_word(term)
     index = InvertedIndex()
     index.load()
 
     match score_type:
         case "tf":
-            return index.get_tf(doc_id, token)
+            return index.get_tf(token, doc_id)
         case "idf":
             return index.get_idf(token)
         case "tfidf":
             return index.get_tf_idf(token, doc_id)
         case "bm25idf":
             return index.get_bm25_idf(token)
+        case "bm25tf":
+            return index.get_bm25_tf(token, doc_id, k1)
 
 class InvertedIndex:
     def __init__(self):
@@ -122,16 +125,6 @@ class InvertedIndex:
             description = movie["description"]
             self.__add_document(doc_id, f"{title} {description}")
             self.docmap[doc_id] = movie
-        
-    def get_tf(self, doc_id, term):
-        term = tokenise_word(term)
-        if doc_id in self.term_frequencies.keys():
-            doc_count = self.term_frequencies[doc_id]
-            if term in doc_count:
-                return doc_count[term]
-        else:
-            return 0
-
 
     def save(self):
         os.makedirs("cache", exist_ok=True)
@@ -141,7 +134,6 @@ class InvertedIndex:
             pickle.dump(self.docmap, docmap)
         with open("cache/term_frequencies.pkl", "wb") as termfreq:
             pickle.dump(self.term_frequencies, termfreq)
-
 
     def load(self):
         try:
@@ -155,6 +147,15 @@ class InvertedIndex:
             print(f"Error: {e}")
             raise
 
+    def get_tf(self, term, doc_id):
+            token = tokenise_word(term)
+            if doc_id in self.term_frequencies.keys():
+                doc_count = self.term_frequencies[doc_id]
+                if token in doc_count:
+                    return doc_count[token]
+            else:
+                return 0
+
     def get_idf(self, term) -> float:
         token = tokenise_word(term)
         total_doc_count = len(self.docmap)
@@ -164,7 +165,7 @@ class InvertedIndex:
 
     def get_tf_idf(self, term, doc_id) -> float:
         token = tokenise_word(term)
-        tf = self.get_tf(doc_id, token)
+        tf = self.get_tf(token, doc_id)
         idf = self.get_idf(token)
         tf_idf = tf * idf
         return tf_idf
@@ -177,6 +178,11 @@ class InvertedIndex:
         df = term_match_doc_count
         bm25 = math.log((N - df + 0.5) / (df + 0.5) + 1)
         return bm25
+
+    def get_bm25_tf(self, term, doc_id, k1 = BM25_K1) -> float:
+        tf = self.get_tf(term, doc_id)
+        bm25_tf = (tf * (k1 + 1)) / (tf + k1)
+        return bm25_tf
         
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -186,6 +192,7 @@ def main() -> None:
     search_parser.add_argument("query", type=str, help="Search query")
 
     build_command = subparsers.add_parser("build", help="Builds an inverted index to assist in tokenised search")
+    
     tf_command = subparsers.add_parser("tf", help="Tokenises the given term and looks up the term frequency")
     tf_command.add_argument("doc_id", type=int, help="Document ID to find term frequency for given token")
     tf_command.add_argument("term", type=str, help="Token")
@@ -195,6 +202,12 @@ def main() -> None:
 
     bm25_idf_command = subparsers.add_parser("bm25idf", help="Returns an Okapi BM25 IDF value for a given term")
     bm25_idf_command.add_argument("term", type=str, help="Term to get BM25 IDF score for")
+
+    bm25_tf_command = subparsers.add_parser("bm25tf", help="Returns an Okapi BM25 TF value for a given term and Document ID")
+    bm25_tf_command.add_argument("doc_id", type=int, help="Document ID to find BM25 TF for given term")
+    bm25_tf_command.add_argument("term", type=str, help="Term to get BM25 TF score for")
+    bm25_tf_command.add_argument("k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter")
+
 
     tfidf_command = subparsers.add_parser("tfidf", help="Returns TF-IDF score for given term and document ID")
     tfidf_command.add_argument("doc_id", type=int, help="Document ID to find TF-IDF for given token")
@@ -257,6 +270,14 @@ def main() -> None:
             # index.load()
             bm25 = get_score(args.command, term)
             print(f"BM25 IDF score of '{args.term}': {bm25:.2f}")
+
+        case "bm25tf":
+            #print(vars(args))
+            term: str = args.term
+            doc_id: int = args.doc_id
+            k1: float = args.k1
+            bm25tf = get_score(args.command, term, doc_id, k1)
+            print(f"BM25 TF score of '{term}' in document '{doc_id}': {bm25tf:.2f}")
 
         case _:
             parser.print_help()
