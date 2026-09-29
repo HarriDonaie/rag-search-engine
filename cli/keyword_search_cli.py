@@ -139,6 +139,23 @@ class InvertedIndex:
         except Exception as e:
             print(f"Error: {e}")
             raise
+
+    def get_idf(self, term) -> float:
+        token = tokenise_word(term)
+        total_doc_count = len(self.docmap)
+        term_match_doc_count = len(self.index.get(token, set()))
+        idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+        return idf
+
+    def get_tf_idf(self, term, doc_id) -> float:
+        token = tokenise_word(term)
+        tf = self.get_tf(doc_id, token)
+        idf = self.get_idf(token)
+        tf_idf = tf * idf
+        return tf_idf
+
+    def get_bm25_idf(self, term:str) -> float:
+        pass
         
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -198,10 +215,7 @@ def main() -> None:
             term = args.term
             index = InvertedIndex()
             index.load()
-            token = tokenise_word(term)
-            total_doc_count = len(index.docmap)
-            term_match_doc_count = len(index.index.get(token, set()))
-            idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+            idf = index.get_idf(term)
             print(f"Inverse document frequency of '{term}': {idf:.2f}")
 
         case "tfidf":
@@ -210,11 +224,7 @@ def main() -> None:
             token = tokenise_word(term)
             index = InvertedIndex()
             index.load()
-            tf = index.get_tf(doc_id, term)
-            total_doc_count = len(index.docmap)
-            term_match_doc_count = len(index.index.get(token, set()))
-            idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
-            tfidf = tf * idf
+            tfidf = index.get_tf_idf(token, doc_id)
             print(f"TF-IDF score of '{term}' in document '{doc_id}': {tfidf:.2f}")
 
         case _:
