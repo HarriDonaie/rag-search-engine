@@ -78,6 +78,21 @@ def load_movies(path:str) -> dict:
         movie_dict = json.load(f)
     return movie_dict
 
+def get_score(score_type: str, term: str, doc_id: int = None) -> float:
+    token = tokenise_word(term)
+    index = InvertedIndex()
+    index.load()
+
+    match score_type:
+        case "tf":
+            return index.get_tf(doc_id, token)
+        case "idf":
+            return index.get_idf(token)
+        case "tfidf":
+            return index.get_tf_idf(token, doc_id)
+        case "bm25idf":
+            return index.get_bm25_idf(token)
+
 class InvertedIndex:
     def __init__(self):
         self.index = {}
@@ -213,34 +228,34 @@ def main() -> None:
 
         case "tf":
             term = args.term
-            term = tokenise_word(term)
+            # term = tokenise_word(term)
             doc_id = args.doc_id
-            index = InvertedIndex()
-            index.load()
-            term_frequency = index.get_tf(doc_id, term)
+            # index = InvertedIndex()
+            # index.load()
+            term_frequency = get_score(args.command, term, doc_id)
             print(term_frequency)
 
         case "idf":
             term = args.term
-            index = InvertedIndex()
-            index.load()
-            idf = index.get_idf(term)
+            # index = InvertedIndex()
+            # index.load()
+            idf = get_score(args.command, term)
             print(f"Inverse document frequency of '{term}': {idf:.2f}")
 
         case "tfidf":
             doc_id = args.doc_id
             term = args.term
-            token = tokenise_word(term)
-            index = InvertedIndex()
-            index.load()
-            tfidf = index.get_tf_idf(token, doc_id)
+            # token = tokenise_word(term)
+            # index = InvertedIndex()
+            # index.load()
+            tfidf = get_score(args.command, term, doc_id)
             print(f"TF-IDF score of '{term}' in document '{doc_id}': {tfidf:.2f}")
 
         case "bm25idf":
             term = args.term
-            index = InvertedIndex()
-            index.load()
-            bm25 = index.get_bm25_idf(term)
+            # index = InvertedIndex()
+            # index.load()
+            bm25 = get_score(args.command, term)
             print(f"BM25 IDF score of '{args.term}': {bm25:.2f}")
 
         case _:
