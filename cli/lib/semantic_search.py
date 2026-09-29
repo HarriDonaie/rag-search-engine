@@ -34,6 +34,16 @@ def embed_query_text(query):
     print(f"First 3 dimensions: {embedding[:3]}")
     print(f"Shape: {embedding.shape}")
 
+def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
+
 class SemanticSearch:
     def __init__(self):
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -46,8 +56,6 @@ class SemanticSearch:
             raise ValueError("Empty/whitespace string provided!")
 
         embedding = self.model.encode([text])[0]
-        
-
         return embedding
 
     def build_embeddings(self, documents):
@@ -73,3 +81,19 @@ class SemanticSearch:
             if len(self.embeddings) == len(documents):
                 return self.embeddings
         return self.build_embeddings(documents)
+
+    def search(self, query, limit):
+        if self.embeddings is None:
+            raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+
+        query_embedding = self.generate_embedding(query)
+        similarity_list = []
+        #for document_embedding in self.embeddings:
+        for i in range(len(self.embeddings)):
+            document_embedding = self.embeddings[i]
+            document = self.documents[i]
+            similarity_list.append((cosine_similarity(document_embedding, query_embedding), document))
+        #print(similarity_list)
+        similarity_list = sorted(similarity_list, key = lambda x: x[0], reverse = True)
+        return similarity_list[:limit]
+    

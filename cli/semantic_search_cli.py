@@ -16,7 +16,9 @@ def main() -> None:
     embed_query_parser = subparsers.add_parser("embed_query", help="Gets an embedding from the model for the given query text")
     embed_query_parser.add_argument("text", help="Query text to be embedded")
 
-
+    search_parser = subparsers.add_parser("search", help="Searches a given query")
+    search_parser.add_argument("query", type=str, help="Query text to be searched")
+    search_parser.add_argument("--limit", nargs = "?", default = 5, type=int, help="Optional: Number of results to return. Default: 5")
 
 
     args = parser.parse_args()
@@ -30,6 +32,20 @@ def main() -> None:
             verify_embeddings()
         case "embed_query":
             embed_query_text(args.text)
+        case "search":
+            search = SemanticSearch()
+            with open("data/movies.json") as f:
+                movies_dict = json.load(f)
+                documents = movies_dict["movies"]
+            embeddings = search.load_or_create_embeddings(documents)
+            result = search.search(args.query, args.limit)
+            #print(result)
+            for i in range(len(result)):
+                title = result[i][1]["title"]
+                score = result[i][0]
+                description = result[i][1]["description"]
+                print(f"{i+1}. {title} (score: {score:.4f})")
+                print(description)
         case _:
             parser.print_help()
 
