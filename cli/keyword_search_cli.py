@@ -155,7 +155,13 @@ class InvertedIndex:
         return tf_idf
 
     def get_bm25_idf(self, term:str) -> float:
-        pass
+        token = tokenise_word(term)
+        total_doc_count = len(self.docmap)
+        N = total_doc_count
+        term_match_doc_count = len(self.index.get(token, set()))
+        df = term_match_doc_count
+        bm25 = math.log((N - df + 0.5) / (df + 0.5) + 1)
+        return bm25
         
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -170,7 +176,10 @@ def main() -> None:
     tf_command.add_argument("term", type=str, help="Token")
 
     idf_command = subparsers.add_parser("idf", help="Returns an inverse document frequency value for a given term")
-    idf_command.add_argument("term", type=str, help="Term")
+    idf_command.add_argument("term", type=str, help="Term to get IDF score for")
+
+    bm25_idf_command = subparsers.add_parser("bm25idf", help="Returns an Okapi BM25 IDF value for a given term")
+    bm25_idf_command.add_argument("term", type=str, help="Term to get BM25 IDF score for")
 
     tfidf_command = subparsers.add_parser("tfidf", help="Returns TF-IDF score for given term and document ID")
     tfidf_command.add_argument("doc_id", type=int, help="Document ID to find TF-IDF for given token")
@@ -226,6 +235,13 @@ def main() -> None:
             index.load()
             tfidf = index.get_tf_idf(token, doc_id)
             print(f"TF-IDF score of '{term}' in document '{doc_id}': {tfidf:.2f}")
+
+        case "bm25idf":
+            term = args.term
+            index = InvertedIndex()
+            index.load()
+            bm25 = index.get_bm25_idf(term)
+            print(f"BM25 IDF score of '{args.term}': {bm25:.2f}")
 
         case _:
             parser.print_help()
