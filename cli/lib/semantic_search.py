@@ -44,6 +44,23 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
 
     return dot_product / (norm1 * norm2)
 
+def chunk(text, chunk_size):
+    print(f"Chunking {len(text)} characters")
+    words = text.split()
+    chunks = []
+    startpoint = 0
+    endpoint = chunk_size
+    
+    for startpoint in range(0, len(words), chunk_size):
+        endpoint = startpoint + chunk_size
+        chunks.append(" ".join(words[startpoint:endpoint]))
+
+
+    for i in range(len(chunks)):
+        print(f"{i+1}. {chunks[i]}")
+
+
+
 class SemanticSearch:
     def __init__(self):
         self.model = SentenceTransformer("all-MiniLM-L6-v2")

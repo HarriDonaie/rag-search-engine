@@ -20,6 +20,10 @@ def main() -> None:
     search_parser.add_argument("query", type=str, help="Query text to be searched")
     search_parser.add_argument("--limit", nargs = "?", default = 5, type=int, help="Optional: Number of results to return. Default: 5")
 
+    chunk_parser = subparsers.add_parser("chunk", help="Fixed-size text chunking")
+    chunk_parser.add_argument("text", type=str, help="Text to be broken into chunks")
+    chunk_parser.add_argument("--chunk-size", type=int, nargs="?", default = 200, help="Optional. Chunk size parameter")
+
 
     args = parser.parse_args()
 
@@ -46,6 +50,8 @@ def main() -> None:
                 description = result[i][1]["description"]
                 print(f"{i+1}. {title} (score: {score:.4f})")
                 print(description)
+        case "chunk":
+            chunk(args.text, args.chunk_size)
         case _:
             parser.print_help()
 
